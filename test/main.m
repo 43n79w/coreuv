@@ -245,10 +245,10 @@ int main(int argc, const char * argv[])
     CFDictionarySetValue(settings, CFSTR("listen_address"), CFSTR("0.0.0.0"));
     CFDictionarySetValue(settings, CFSTR("listen_port"), CFSTR("9000"));
 
-    PJAPIResponseDataSourceInit(&CreateHeaders, &CreateBody);
-    PJAPIResponseDelegateInit(&BeginResponse, &EndResponse);
+    CoreUVResponseDataSourceInit(&CreateHeaders, &CreateBody);
+    CoreUVResponseDelegateInit(&BeginResponse, &EndResponse);
 
-    int exit_code = PJAPIServerInit(settings);
+    int exit_code = CoreUVInit(settings);
     
     CFRelease(settings);
     

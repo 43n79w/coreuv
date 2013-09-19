@@ -30,6 +30,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		DA3E3C8C17EBA02E00A19B54 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		DA68107017E92E0E00672C21 /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		DA68107217E92E5300672C21 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk/System/Library/Frameworks/CoreFoundation.framework; sourceTree = DEVELOPER_DIR; };
 		DA8F407A17E6631B009A736E /* test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -72,6 +73,7 @@
 		DA7E9B0117E65EB100AC921B = {
 			isa = PBXGroup;
 			children = (
+				DA3E3C8C17EBA02E00A19B54 /* LICENSE */,
 				DA9A22D817E916F2001341B1 /* coreuv */,
 				DA9A22D317E825E9001341B1 /* CoreJSON */,
 				DA8F408917E69BE3009A736E /* http-parser */,

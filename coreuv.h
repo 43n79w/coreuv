@@ -1,6 +1,6 @@
 //
-//  obj-http.h
-//  obj-http
+//  coreuv.h
+//  CoreUV
 //
 //  Created by Paul Jara on 2013-09-17.
 //
@@ -20,8 +20,8 @@ typedef struct {
     CFStringRef url;
 } http_request_t;
 
-int PJAPIServerInit(CFDictionaryRef settings);
-void PJAPIResponseDataSourceInit(CFDictionaryRef (*CreateHeaders)(http_request_t *request, CFIndex contentLength), CFDictionaryRef (*CreateBody)(http_request_t *request));
-void PJAPIResponseDelegateInit(void (*BeginResponse)(), void (*EndResponse)());
+int CoreUVInit(CFDictionaryRef settings);
+void CoreUVResponseDataSourceInit(CFDictionaryRef (*CreateHeaders)(http_request_t *request, CFIndex contentLength), CFDictionaryRef (*CreateBody)(http_request_t *request));
+void CoreUVResponseDelegateInit(void (*BeginResponse)(), void (*EndResponse)());
 
 #endif

@@ -1,6 +1,6 @@
 //
 //  coreuv.c
-//  obj-http
+//  CoreUV
 //
 //  Created by Paul Jara on 2013-09-17.
 //
@@ -10,8 +10,6 @@
 #include <unistd.h>
 #include "CoreJSON.h"
 #include "coreuv.h"
-
-/*typedef int (*response_send_t)();*/
 
 typedef struct {
     CFMutableDictionaryRef headers;
@@ -260,7 +258,7 @@ void on_new_connection(uv_stream_t *server, int status) {
   uv_read_start((uv_stream_t *)&client->handle, alloc_buffer, on_read);
 }
 
-int PJAPIServerInit(CFDictionaryRef settings) {
+int CoreUVInit(CFDictionaryRef settings) {
   default_loop = uv_default_loop();
 
   parser_settings.on_headers_complete = on_headers_complete;
@@ -303,12 +301,12 @@ int PJAPIServerInit(CFDictionaryRef settings) {
   return 0;
 }
 
-void PJAPIResponseDataSourceInit(CFDictionaryRef (*CreateHeaders)(), CFDictionaryRef (*CreateBody)()) {
+void CoreUVResponseDataSourceInit(CFDictionaryRef (*CreateHeaders)(), CFDictionaryRef (*CreateBody)()) {
   headers_ptr = CreateHeaders;
   body_ptr = CreateBody;
 }
 
-void PJAPIResponseDelegateInit(void (*BeginResponse)(), void (*EndResponse)()) {
+void CoreUVResponseDelegateInit(void (*BeginResponse)(), void (*EndResponse)()) {
   on_response_begin_ptr = BeginResponse;
   on_response_end_ptr = EndResponse;
 }
