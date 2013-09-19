@@ -5,7 +5,13 @@ A small, lightweight JSON-outputting HTTP server built with libuv, http_parser, 
 
 INSTALL
 =======
-Coming soon.
+Proper documentation coming soon. For now, this has been tested on OS X Mountain Lion 10.8.4+ with homebrew installed.
+
+You must install the required dependencies not bundled in the project.
+
+1. brew install libuv.
+2. brew install yajl.
+3. also depends on libcurl and libtidy which appear to be installed by default on my system.
 
 LICENSE
 =======
@@ -177,8 +183,6 @@ incurred by, or claims asserted against, such Contributor by reason of your
 accepting any such warranty or additional liability.
 
 END OF TERMS AND CONDITIONS
-
-APPENDIX: How to apply the Apache License to your work
 
    Copyright 2013 Paul Jara
 
