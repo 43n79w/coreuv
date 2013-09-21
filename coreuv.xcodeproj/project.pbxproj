@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DA3E3C8E17EBF42000A19B54 /* coreuv-utils.c in Sources */ = {isa = PBXBuildFile; fileRef = DA3E3C8D17EBF42000A19B54 /* coreuv-utils.c */; };
 		DA68107117E92E0E00672C21 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = DA68107017E92E0E00672C21 /* main.m */; };
 		DA68107317E92E5300672C21 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DA68107217E92E5300672C21 /* CoreFoundation.framework */; };
 		DA8F407E17E6631B009A736E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DA8F407D17E6631B009A736E /* Foundation.framework */; };
@@ -31,6 +32,8 @@
 
 /* Begin PBXFileReference section */
 		DA3E3C8C17EBA02E00A19B54 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		DA3E3C8D17EBF42000A19B54 /* coreuv-utils.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "coreuv-utils.c"; sourceTree = "<group>"; };
+		DA3E3C8F17EBF42B00A19B54 /* coreuv-utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "coreuv-utils.h"; sourceTree = "<group>"; };
 		DA68107017E92E0E00672C21 /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		DA68107217E92E5300672C21 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk/System/Library/Frameworks/CoreFoundation.framework; sourceTree = DEVELOPER_DIR; };
 		DA8F407A17E6631B009A736E /* test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -163,6 +166,8 @@
 			children = (
 				DA9A22D917E91794001341B1 /* coreuv.h */,
 				DA9A22DA17E917E5001341B1 /* coreuv.c */,
+				DA3E3C8D17EBF42000A19B54 /* coreuv-utils.c */,
+				DA3E3C8F17EBF42B00A19B54 /* coreuv-utils.h */,
 			);
 			indentWidth = 2;
 			name = coreuv;
@@ -223,6 +228,7 @@
 				DA9A22D517E825FC001341B1 /* CoreJSON.c in Sources */,
 				DA9A22DB17E917E5001341B1 /* coreuv.c in Sources */,
 				DA68107117E92E0E00672C21 /* main.m in Sources */,
+				DA3E3C8E17EBF42000A19B54 /* coreuv-utils.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

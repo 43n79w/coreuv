@@ -163,10 +163,9 @@ CFDictionaryRef CreateHeaders(http_request_t *request, CFIndex contentLength) {
 }
 
 CFDictionaryRef CreateBody(http_request_t *request) {
-  CFMutableDictionaryRef dict = CFDictionaryCreateMutable(NULL, 30, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+  /*CFMutableDictionaryRef dict = CFDictionaryCreateMutable(NULL, 30, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
   CFDictionarySetValue(dict, CFSTR("Foo"), CFSTR("Bar"));
-  return dict;
-/*
+  return dict;*/
   
     CURL *curl;
     CURLcode res;
@@ -224,13 +223,14 @@ CFDictionaryRef CreateBody(http_request_t *request) {
     
     CFRelease(all_shows);
     
-    return dict;*/
+    return dict;
 }
 
 #pragma mark PJHTTPResponseDelegate functions
 
-void BeginResponse() {
-    curl_global_init(CURL_GLOBAL_DEFAULT);
+void BeginResponse(CUVResponseTransform *transform, CUVResponseReplacements *replace) {
+  *replace = kCUVResponseReplaceHTMLEntityNames;
+  curl_global_init(CURL_GLOBAL_DEFAULT);
 }
 
 void EndResponse() {

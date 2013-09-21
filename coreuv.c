@@ -10,18 +10,21 @@
 #include <unistd.h>
 #include "CoreJSON.h"
 #include "coreuv.h"
+#include "coreuv-utils.h"
 
 typedef struct {
-    CFMutableDictionaryRef headers;
+  CFMutableDictionaryRef headers;
+  CUVResponseTransform transform;
+  CUVResponseReplacements replacements;
 } http_response_t;
 
 struct client_t {
-    uv_tcp_t handle;
-    http_parser parser;
-    uv_write_t write_req;
-    http_request_t request;
-    http_response_t response;
-    uv_buf_t response_buffer;
+  uv_tcp_t handle;
+  http_parser parser;
+  uv_write_t write_req;
+  http_request_t request;
+  http_response_t response;
+  uv_buf_t response_buffer;
 };
 
 typedef struct client_t client_t;
@@ -45,8 +48,8 @@ void (*on_response_end_ptr)();
 CFDictionaryRef (*headers_ptr)(http_request_t *request, CFIndex contentLength);
 CFDictionaryRef (*body_ptr)(http_request_t *request);
 
-void begin_response() {
-  on_response_begin_ptr();
+void begin_response(client_t *c) {
+  on_response_begin_ptr(&c->response.transform, &c->response.replacements);
 };
 
 void end_response() {
@@ -66,6 +69,7 @@ void handle_request_dispatch(void *context) {
   client_t *c = (client_t *) context;
 
   CFMutableStringRef response_buffer;
+  CFMutableStringRef headers_buffer;
   
   /**
    * We generate the body before the headers so we can set the Content-Length header (though this isn't mandatory).
@@ -75,54 +79,77 @@ void handle_request_dispatch(void *context) {
   response_buffer = CFStringCreateMutable(NULL, 1000);
   
   CFErrorRef error = NULL;
+  CFStringRef body_replace;
   CFStringRef json = JSONCreateString(NULL, body, kJSONWriteOptionsDefault, &error);
+
+  if ((c->response.replacements & kCUVResponseReplaceHTMLEntityNames) == kCUVResponseReplaceHTMLEntityNames) {
+    body_replace = CoreUVStringCreateFromHTMLEntityNameString(json);
+    CFRelease(json);
+  }
+  else if ((c->response.replacements & kCUVResponseReplaceHTMLEntityNumbers) == kCUVResponseReplaceHTMLEntityNumbers) {
+    body_replace = CoreUVStringCreateFromHTMLEntityNumberString(json);
+    CFRelease(json);
+  }
+  else {
+    body_replace = json;
+  }
   
-  CFIndex content_length = CFStringGetLength(json);
+  if (body_replace) {
+      CFStringAppend(response_buffer, body_replace);
+      CFRelease(body_replace);
+  }
   
-  CFDictionaryRef headers = (*headers_ptr)(&c->request, content_length);
+  CFIndex len_chars = CFStringGetLength(response_buffer);
+  CFIndex len_bytes_body;
+  CFIndex num_converted_chars;
+  num_converted_chars = CFStringGetBytes(response_buffer, CFRangeMake(0, len_chars), kCFStringEncodingUTF8, '?', FALSE, NULL, 0, &len_bytes_body);
+  
+  if (num_converted_chars == 0) {
+      // converted nothing
+  }
+  
+  CFDictionaryRef headers = (*headers_ptr)(&c->request, len_bytes_body);
   
   CFIndex idx = CFDictionaryGetCount(headers);
   CFTypeRef *keys = (CFTypeRef *) malloc(sizeof(CFTypeRef) * idx);
   CFTypeRef *values = (CFTypeRef *) malloc(sizeof(CFTypeRef) * idx);
 
   CFDictionaryGetKeysAndValues(headers, (const void **) keys, (const void **) values);
+  headers_buffer = CFStringCreateMutable(NULL, 1000);
   
-  CFStringAppend(response_buffer, CFSTR("HTTP/1.1 200 OK\r\n"));
+  CFStringAppend(headers_buffer, CFSTR("HTTP/1.1 200 OK\r\n"));
   
   for (int i = 0; i < idx; i++) {
       CFTypeRef *key = (CFTypeRef *) keys[i];
       CFTypeRef *value = (CFTypeRef *) values[i];
-      CFStringAppend(response_buffer, (CFStringRef) key);
-      CFStringAppend(response_buffer, CFSTR(": "));
-      CFStringAppend(response_buffer, (CFStringRef) value);
-      CFStringAppend(response_buffer, CFSTR("\r\n"));
+      CFStringAppend(headers_buffer, (CFStringRef) key);
+      CFStringAppend(headers_buffer, CFSTR(": "));
+      CFStringAppend(headers_buffer, (CFStringRef) value);
+      CFStringAppend(headers_buffer, CFSTR("\r\n"));
   }
   
   free(keys);
   free(values);
   
-  CFStringAppend(response_buffer, CFSTR("\r\n"));
- 
-  if (json) {
-      CFStringAppend(response_buffer, json);
-      CFRelease(json);
-  }
+  CFStringAppend(headers_buffer, CFSTR("\r\n"));
+  CFStringAppend(headers_buffer, response_buffer);
   
-  CFRelease(headers);
-  CFRelease(body);
+  CFIndex len_bytes_header;
+  len_chars = CFStringGetLength(headers_buffer);
+  num_converted_chars = CFStringGetBytes(headers_buffer, CFRangeMake(0, len_chars), kCFStringEncodingUTF8, '?', FALSE, NULL, 0, &len_bytes_header);
   
-  CFIndex len = CFStringGetLength(response_buffer);
-  CFIndex usedBufferLength;
-  CFIndex numChars;
-  c->response_buffer = uv_buf_init((char *) malloc(len), (uint32_t) len);
-  numChars = CFStringGetBytes(response_buffer, CFRangeMake(0, len), kCFStringEncodingUTF8, '?', FALSE, (UInt8 *) c->response_buffer.base, len, &usedBufferLength);
+  c->response_buffer = uv_buf_init((char *) malloc(len_bytes_header + 1), (uint32_t) len_bytes_header + 1);
+  num_converted_chars = CFStringGetBytes(headers_buffer, CFRangeMake(0, len_chars), kCFStringEncodingUTF8, '?', FALSE, (UInt8 *) c->response_buffer.base, len_bytes_header, &len_bytes_header);
   
-  if (numChars == 0) {
+  if (num_converted_chars == 0) {
       // converted nothing
   }
+
+  dispatch_async_f(response_queue, c, handle_async_response);
   
   CFRelease(response_buffer);
-  dispatch_async_f(response_queue, c, handle_async_response);
+  CFRelease(headers);
+  CFRelease(body);
 }
 
 void handle_request(client_t *client) {
@@ -182,7 +209,7 @@ int on_header_value(http_parser *parser, const char *header_value, size_t header
 int on_headers_complete(http_parser *parser) {
   client_t *client = (client_t *) parser->data;
   
-  begin_response();
+  begin_response(client);
   handle_request(client);
   
   return 1;
