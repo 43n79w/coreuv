@@ -36,7 +36,7 @@ enum {
 typedef uint64_t CUVResponseReplacements;
 
 int CoreUVInit(CFDictionaryRef settings);
-void CoreUVResponseDataSourceInit(CFDictionaryRef (*CreateHeaders)(http_request_t *request, CFIndex contentLength), CFDictionaryRef (*CreateBody)(http_request_t *request));
-void CoreUVResponseDelegateInit(void (*BeginResponse)(CUVResponseTransform *transform, CUVResponseReplacements *replace), void (*EndResponse)());
+void CoreUVResponseDataSourceInit(CFDictionaryRef (*CreateHeaders)(http_request_t const * const request, CFIndex contentLength), CFDictionaryRef (*CreateBody)(http_request_t const * const request));
+void CoreUVResponseDelegateInit(void (*BeginResponse)(CUVResponseTransform * const transform, CUVResponseReplacements * const replace), void (*EndResponse)());
 
 #endif
