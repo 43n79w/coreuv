@@ -35,8 +35,14 @@ enum {
 };
 typedef uint64_t CUVResponseReplacements;
 
-int CoreUVInit(CFDictionaryRef settings);
-void CoreUVResponseDataSourceInit(CFDictionaryRef (*CreateHeaders)(http_request_t const * const request, CFIndex contentLength), CFDictionaryRef (*CreateBody)(http_request_t const * const request));
-void CoreUVResponseDelegateInit(void (*BeginResponse)(CUVResponseTransform * const transform, CUVResponseReplacements * const replace), void (*EndResponse)());
+enum {
+  kCUVHTTP200 = 200,
+  kCUVHTTP404 = 404,
+  kCUVHTTP500 = 500
+};
+typedef uint64_t CUVHTTPResponseStatus;
 
+int CUVInit(CFDictionaryRef settings);
+void CUVResponseDataSourceInit(CFDictionaryRef (*CreateHeaders)(http_request_t const * const request, CFIndex contentLength), CFDictionaryRef (*CreateBody)(http_request_t const * const request, CUVHTTPResponseStatus * const status));
+void CUVResponseDelegateInit(void (*BeginResponse)(CUVResponseTransform * const transform, CUVResponseReplacements * const replace), void (*EndResponse)(CUVHTTPResponseStatus status));
 #endif

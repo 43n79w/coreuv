@@ -151,6 +151,8 @@ CFDictionaryRef CreateHeaders(http_request_t const * const request, CFIndex cont
   CFStringRef contentLengthValue = CFStringCreateWithFormat(NULL, NULL, CFSTR("%ld"), contentLength);
   
   CFDictionarySetValue(dict, CFSTR("Content-Type"), CFSTR("application/json; charset=UTF-8"));
+  /*CFDictionarySetValue(dict, CFSTR("Content-Type"), CFSTR("text/html; charset=UTF-8"));*/
+  /*CFDictionarySetValue(dict, CFSTR("Content-Type"), CFSTR("text/xml; charset=UTF-8"));*/
   CFDictionarySetValue(dict, CFSTR("Content-Length"), contentLengthValue);
   CFDictionarySetValue(dict, CFSTR("Transfer-Encoding"), CFSTR("Identity"));
   CFDictionarySetValue(dict, CFSTR("X-Frame-Options"), CFSTR("SAMEORIGIN"));
@@ -161,11 +163,11 @@ CFDictionaryRef CreateHeaders(http_request_t const * const request, CFIndex cont
   return dict;
 }
 
-CFDictionaryRef CreateBody(http_request_t const * const request) {
+CFDictionaryRef CreateBody(http_request_t const * const request, CUVHTTPResponseStatus * const status) {
   /*CFMutableDictionaryRef dict = CFDictionaryCreateMutable(NULL, 30, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
   CFDictionarySetValue(dict, CFSTR("Foo"), CFSTR("Bar"));
+  *status = kCUVHTTP200;
   return dict;*/
-  
   CURL *curl;
   CURLcode res;
   
@@ -178,42 +180,41 @@ CFDictionaryRef CreateBody(http_request_t const * const request) {
   
   curl = curl_easy_init();
   if (curl) {
-      curl_easy_setopt(curl, CURLOPT_URL, "http://www.rotate.com/content/tickets/");
-      curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
-      
-      tdoc = tidyCreate();
-      tidyOptSetBool(tdoc, TidyForceOutput, yes);
-      tidyOptSetInt(tdoc, TidyWrapLen, 4096);
-      tidySetErrorBuffer(tdoc, &tidy_errbuf);
-      tidyBufInit(&docbuf);
-      
-      curl_easy_setopt(curl, CURLOPT_WRITEDATA, &docbuf);
-      
-      res = curl_easy_perform(curl);
-      
-      if (CURLE_OK != res) {
-          //error
-          NSLog(@"Error");
-      }
-      else {
-          err = tidyParseBuffer(tdoc, &docbuf);
+    curl_easy_setopt(curl, CURLOPT_URL, "http://www.rotate.com/content/tickets/");
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
+    
+    tdoc = tidyCreate();
+    tidyOptSetBool(tdoc, TidyForceOutput, yes);
+    tidyOptSetInt(tdoc, TidyWrapLen, 4096);
+    tidySetErrorBuffer(tdoc, &tidy_errbuf);
+    tidyBufInit(&docbuf);
+    
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &docbuf);
+    
+    res = curl_easy_perform(curl);
+    
+    if (CURLE_OK != res) {
+      //error
+      NSLog(@"Error");
+    }
+    else {
+      err = tidyParseBuffer(tdoc, &docbuf);
+      if (err >= 0) {
+        err = tidyCleanAndRepair(tdoc);
+        if (err >= 0) {
+          err = tidyRunDiagnostics(tdoc);
           if (err >= 0) {
-              err = tidyCleanAndRepair(tdoc);
-              if (err >= 0) {
-                  err = tidyRunDiagnostics(tdoc);
-                  if (err >= 0) {
-                      dump_node(tdoc, tidyGetRoot(tdoc), 0, &all_shows, nil);
-                      tidyBufFree(&docbuf);
-                      tidyBufFree(&tidy_errbuf);
-                      tidyRelease(tdoc);
-                  }
-              }
+            dump_node(tdoc, tidyGetRoot(tdoc), 0, &all_shows, nil);
+            tidyBufFree(&docbuf);
+            tidyBufFree(&tidy_errbuf);
+            tidyRelease(tdoc);
           }
-         
+        }
       }
-      
-      curl_easy_cleanup(curl);
+    }
+    
+    curl_easy_cleanup(curl);
   }
   
   CFMutableDictionaryRef dict = CFDictionaryCreateMutable(NULL, 30, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
@@ -229,10 +230,14 @@ CFDictionaryRef CreateBody(http_request_t const * const request) {
 
 void BeginResponse(CUVResponseTransform * const transform, CUVResponseReplacements * const replace) {
   *replace = kCUVResponseReplaceHTMLEntityNames;
+  *transform = kCUVResponseTransformJSON;
+  /**transform = kCUVResponseTransformHTML;*/
+  /**transform = kCUVResponseTransformXML;*/
+  
   curl_global_init(CURL_GLOBAL_DEFAULT);
 }
 
-void EndResponse() {
+void EndResponse(CUVHTTPResponseStatus status) {
     curl_global_cleanup();
 }
 
@@ -244,10 +249,10 @@ int main(int argc, const char * argv[])
     CFDictionarySetValue(settings, CFSTR("listen_address"), CFSTR("0.0.0.0"));
     CFDictionarySetValue(settings, CFSTR("listen_port"), CFSTR("9000"));
 
-    CoreUVResponseDataSourceInit(&CreateHeaders, &CreateBody);
-    CoreUVResponseDelegateInit(&BeginResponse, &EndResponse);
-
-    int exit_code = CoreUVInit(settings);
+    CUVResponseDataSourceInit(&CreateHeaders, &CreateBody);
+    CUVResponseDelegateInit(&BeginResponse, &EndResponse);
+  
+    int exit_code = CUVInit(settings);
     
     CFRelease(settings);
     

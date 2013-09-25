@@ -13,7 +13,9 @@
  * Returns a CFStringRef that has the HTML entities from source converted
  * to a UTF8 text representation.
  */
-CFStringRef CoreUVStringCreateFromHTMLEntityNameString(CFStringRef source);
-CFStringRef CoreUVStringCreateFromHTMLEntityNumberString(CFStringRef source);
+CFStringRef CUVStringCreateFromHTMLEntityNameString(CFStringRef source);
+CFStringRef CUVStringCreateFromHTMLEntityNumberString(CFStringRef source);
 
+CFStringRef CUVStringCreateHTMLFromDictionary(CFDictionaryRef source);
+CFStringRef CUVStringCreateXMLFromDictionary(CFDictionaryRef source);
 #endif

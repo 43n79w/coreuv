@@ -6,8 +6,9 @@
 //
 //
 
-#include "coreuv.h"
 #include <CoreFoundation/CoreFoundation.h>
+#include "coreuv.h"
+#include "coreuv-utils.h"
 
 #define HASH #
 #define HASHIFY() HASH
@@ -33,8 +34,8 @@ void __init__() {
     return;
   }
   
-  entity_names = CFDictionaryCreateMutable(NULL, 128, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-  entity_numbers = CFDictionaryCreateMutable(NULL, 128, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+  entity_names = CFDictionaryCreateMutable(NULL, 129, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+  entity_numbers = CFDictionaryCreateMutable(NULL, 129, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
   
   HTML_ENTITY(nbsp, 160, " ");
   HTML_ENTITY(iexcl, 161, \u00A1);
@@ -170,7 +171,9 @@ void __init__() {
   HTML_ENTITY(permil, 8240, \u2030);
   HTML_ENTITY(lsaquo, 8249, \u2039);
   HTML_ENTITY(rsaquo, 8250, \u203A);
-  HTML_ENTITY(euro, 8364, \u20AC)
+  HTML_ENTITY(euro, 8364, \u20AC);
+  
+  HTML_ENTITY(prime, 8242, \u2032);
 }
 
 CFStringRef __CoreUVStringCreateFromEntityString(CFStringRef source, CUVResponseReplacements replace) {
@@ -209,6 +212,7 @@ CFStringRef __CoreUVStringCreateFromEntityString(CFStringRef source, CUVResponse
           CFStringFindAndReplace(dest, entity_match, entity_replacement, CFRangeMake(0, end), 0);
           end = CFStringGetLength(dest);
           if (start >= end) {
+            CFRelease(entity_match);
             break;
           }
         }
@@ -230,7 +234,7 @@ CFStringRef __CoreUVStringCreateFromEntityString(CFStringRef source, CUVResponse
  * Returns a CFStringRef that has the HTML entities from source converted
  * to a UTF8 text representation.
  */
-CFStringRef CoreUVStringCreateFromHTMLEntityNameString(CFStringRef source) {
+CFStringRef CUVStringCreateFromHTMLEntityNameString(CFStringRef source) {
   return __CoreUVStringCreateFromEntityString(source, kCUVResponseReplaceHTMLEntityNames);
 }
 
@@ -238,6 +242,175 @@ CFStringRef CoreUVStringCreateFromHTMLEntityNameString(CFStringRef source) {
  * Returns a CFStringRef that has the XML entities from source converted
  * to a UTF8 text representation.
  */
-CFStringRef CoreUVStringCreateFromHTMLEntityNumberString(CFStringRef source) {
+CFStringRef CUVStringCreateFromHTMLEntityNumberString(CFStringRef source) {
   return __CoreUVStringCreateFromEntityString(source, kCUVResponseReplaceHTMLEntityNumbers);
+}
+
+
+CFStringRef __CUVStringCreateHTMLFromArray(CFArrayRef source, CFStringRef className) {
+  CFMutableStringRef html = CFStringCreateMutable(NULL, 100000);
+  CFStringRef div_string = CFStringCreateWithFormat(NULL, NULL, CFSTR("<div class=\"%@\">"), className);
+  
+  CFIndex idx = CFArrayGetCount(source);
+  
+  for (CFIndex i = 0; i < idx; i++) {
+    CFTypeRef elem = CFArrayGetValueAtIndex(source, i);
+    CFTypeID type_id = CFGetTypeID(elem);
+    boolean_t is_string = (type_id == CFStringGetTypeID());
+    boolean_t is_array = (type_id == CFArrayGetTypeID());
+    boolean_t is_dict = (type_id == CFDictionaryGetTypeID());
+    
+    if (is_string) {
+      CFStringAppend(html, (CFStringRef) elem);
+    }
+    else if (is_dict) {
+      CFDictionaryRef dict = elem;
+      CFStringRef nested_object = CUVStringCreateHTMLFromDictionary(dict);
+      CFStringAppend(html, div_string);
+      CFStringAppend(html, nested_object);
+      CFStringAppend(html, CFSTR("</div>"));
+      CFRelease(nested_object);
+    }
+    else if (is_array) {
+      CFArrayRef arr = elem;
+      CFStringRef nested_class_name = CFStringCreateWithFormat(NULL, NULL, CFSTR("%@_item"), className);
+      CFStringRef nested_object = __CUVStringCreateHTMLFromArray(arr, nested_class_name);
+      CFStringAppend(html, nested_object);
+      CFRelease(nested_class_name);
+      CFRelease(nested_object);
+    }
+  }
+  
+  CFRelease(div_string);
+  return html;
+}
+
+CFStringRef CUVStringCreateHTMLFromDictionary(CFDictionaryRef source) {
+  CFMutableStringRef html = CFStringCreateMutable(NULL, 100000);
+  CFIndex idx = CFDictionaryGetCount(source);
+  CFTypeRef *keys = (CFTypeRef *) malloc(sizeof(CFTypeRef) * idx);
+  CFTypeRef *values = (CFTypeRef *) malloc(sizeof(CFTypeRef) * idx);
+  
+  CFDictionaryGetKeysAndValues(source, (const void **) keys, (const void **) values);
+  
+  for (CFIndex i = 0; i < idx; i++) {
+    CFTypeID type_id = CFGetTypeID(values[i]);
+    boolean_t is_string = (type_id == CFStringGetTypeID());
+    boolean_t is_array = (type_id == CFArrayGetTypeID());
+    boolean_t is_dict = (type_id == CFDictionaryGetTypeID());
+    CFStringRef div_string = CFStringCreateWithFormat(NULL, NULL, CFSTR("<div id=\"%@\">"), keys[i]);
+    CFStringAppend(html, div_string);
+    
+    if (is_string) {
+      CFStringAppend(html, values[i]);
+    }
+    else if (is_dict) {
+      CFDictionaryRef dict = values[i];
+      CFStringRef nested_object = CUVStringCreateHTMLFromDictionary(dict);
+      CFStringAppend(html, nested_object);
+      CFRelease(nested_object);
+    }
+    else if (is_array) {
+      CFArrayRef arr = values[i];
+      CFStringRef nested_class_name = CFStringCreateWithFormat(NULL, NULL, CFSTR("%@_item"), keys[i]);
+      CFStringRef nested_object = __CUVStringCreateHTMLFromArray(arr, nested_class_name);
+      CFStringAppend(html, nested_object);
+      CFRelease(nested_class_name);
+      CFRelease(nested_object);
+    }
+    
+    CFStringAppend(html, CFSTR("</div>"));
+    CFRelease(div_string);
+  }
+  
+  free(keys);
+  free(values);
+  
+  return html;
+}
+
+CFStringRef __CUVStringCreateXMLFromArray(CFArrayRef source, CFStringRef nodeName) {
+  CFMutableStringRef html = CFStringCreateMutable(NULL, 100000);
+  
+  CFIndex idx = CFArrayGetCount(source);
+  
+  for (CFIndex i = 0; i < idx; i++) {
+    CFTypeRef elem = CFArrayGetValueAtIndex(source, i);
+    CFTypeID type_id = CFGetTypeID(elem);
+    boolean_t is_string = (type_id == CFStringGetTypeID());
+    boolean_t is_array = (type_id == CFArrayGetTypeID());
+    boolean_t is_dict = (type_id == CFDictionaryGetTypeID());
+    
+    if (is_string) {
+      CFStringAppend(html, (CFStringRef) elem);
+    }
+    else if (is_dict) {
+      CFDictionaryRef dict = elem;
+      CFStringRef nested_object = CUVStringCreateXMLFromDictionary(dict);
+      CFStringAppend(html, CFSTR("<"));
+      CFStringAppend(html, nodeName);
+      CFStringAppend(html, CFSTR(">"));
+      CFStringAppend(html, nested_object);
+      CFStringAppend(html, CFSTR("</"));
+      CFStringAppend(html, nodeName);
+      CFStringAppend(html, CFSTR(">"));
+      CFRelease(nested_object);
+    }
+    else if (is_array) {
+      CFArrayRef arr = elem;
+      CFStringRef nested_node_name = CFStringCreateWithFormat(NULL, NULL, CFSTR("%@_item"), nodeName);
+      CFStringRef nested_object = __CUVStringCreateXMLFromArray(arr, nested_node_name);
+      CFStringAppend(html, nested_object);
+      CFRelease(nested_node_name);
+      CFRelease(nested_object);
+    }
+  }
+  
+  return html;
+}
+
+CFStringRef CUVStringCreateXMLFromDictionary(CFDictionaryRef source) {
+  CFMutableStringRef html = CFStringCreateMutable(NULL, 100000);
+  CFIndex idx = CFDictionaryGetCount(source);
+  CFTypeRef *keys = (CFTypeRef *) malloc(sizeof(CFTypeRef) * idx);
+  CFTypeRef *values = (CFTypeRef *) malloc(sizeof(CFTypeRef) * idx);
+  
+  CFDictionaryGetKeysAndValues(source, (const void **) keys, (const void **) values);
+  
+  for (CFIndex i = 0; i < idx; i++) {
+    CFTypeID type_id = CFGetTypeID(values[i]);
+    boolean_t is_string = (type_id == CFStringGetTypeID());
+    boolean_t is_array = (type_id == CFArrayGetTypeID());
+    boolean_t is_dict = (type_id == CFDictionaryGetTypeID());
+    CFStringRef open_tag = CFStringCreateWithFormat(NULL, NULL, CFSTR("<%@>"), keys[i]);
+    CFStringRef close_tag = CFStringCreateWithFormat(NULL, NULL, CFSTR("</%@>"), keys[i]);
+    CFStringAppend(html, open_tag);
+    
+    if (is_string) {
+      CFStringAppend(html, values[i]);
+    }
+    else if (is_dict) {
+      CFDictionaryRef dict = values[i];
+      CFStringRef nested_object = CUVStringCreateXMLFromDictionary(dict);
+      CFStringAppend(html, nested_object);
+      CFRelease(nested_object);
+    }
+    else if (is_array) {
+      CFArrayRef arr = values[i];
+      CFStringRef nested_node_name = CFStringCreateWithFormat(NULL, NULL, CFSTR("%@_item"), keys[i]);
+      CFStringRef nested_object = __CUVStringCreateXMLFromArray(arr, nested_node_name);
+      CFStringAppend(html, nested_object);
+      CFRelease(nested_node_name);
+      CFRelease(nested_object);
+    }
+    
+    CFStringAppend(html, close_tag);
+    CFRelease(open_tag);
+    CFRelease(close_tag);
+  }
+  
+  free(keys);
+  free(values);
+  
+  return html;
 }
