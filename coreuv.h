@@ -11,7 +11,7 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <uv.h>
-#include "http_parser.h"
+#include "http-parser/http_parser.h"
 
 typedef struct {
   uint64_t id;

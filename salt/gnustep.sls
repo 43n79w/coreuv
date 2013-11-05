@@ -80,6 +80,13 @@ download-gnustep-base:
     - require:
       - pkg: curl
 
+download-gnustep-corebase:
+  cmd.run:
+    - name: curl -o gnustep-corebase.tar.gz ftp://ftp.gnustep.org/pub/gnustep/libs/gnustep-corebase-0.1.tar.gz
+    - cwd: /tmp/
+    - require:
+      - pkg: curl
+
 download-libobjc:
   cmd.run:
     - name: curl -o libobjc2-1.6.tar.gz http://download.gna.org/gnustep/libobjc2-1.6.tar.gz
@@ -107,6 +114,13 @@ extract-gnustep-base:
     - cwd: /tmp/
     - require:
       - cmd.run: download-gnustep-base
+
+extract-gnustep-corebase:
+  cmd.run:
+    - name: tar zxf gnustep-corebase.tar.gz
+    - cwd: /tmp/
+    - require:
+      - cmd.run: download-gnustep-corebase
 
 extract-gnustep-gui:
   cmd.run:
@@ -150,12 +164,19 @@ install-gnustep-base:
     - require:
       - cmd.run: install-gnustep-make
 
+install-gnustep-corebase:
+  cmd.run:
+    - name: export CC=clang && ./configure && make install
+    - cwd: /tmp/gnustep-corebase-0.1/
+    - require:
+      - cmd.run: install-gnustep-base
+
 install-gnustep-gui:
   cmd.run:
     - name: ldconfig && export CC=clang && ./configure && make install
     - cwd: /tmp/gnustep-gui-0.23.1/
     - require:
-      - cmd.run: install-gnustep-base
+      - cmd.run: install-gnustep-corebase
 
 install-gnustep-back:
   cmd.run:

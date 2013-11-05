@@ -8,7 +8,8 @@
 
 #include <dispatch/dispatch.h>
 #include <unistd.h>
-#include "CoreJSON.h"
+#include <stdlib.h>
+// #include "CoreJSON.h"
 #include "coreuv.h"
 #include "coreuv-utils.h"
 
@@ -82,15 +83,16 @@ void __handle_request_dispatch_json(void *context) {
   
   CFErrorRef error = NULL;
   CFStringRef body_replace;
-  CFStringRef json = JSONCreateString(NULL, body, kJSONWriteOptionsDefault, &error);
+  // CFStringRef json = JSONCreateString(NULL, body, kJSONWriteOptionsDefault, &error);
+  CFStringRef json = CFSTR("{\"foo\":\"bar\"}");
 
   if ((c->response.replacements & kCUVResponseReplaceHTMLEntityNames) == kCUVResponseReplaceHTMLEntityNames) {
     body_replace = CUVStringCreateFromHTMLEntityNameString(json);
-    CFRelease(json);
+    //CFRelease(json);
   }
   else if ((c->response.replacements & kCUVResponseReplaceHTMLEntityNumbers) == kCUVResponseReplaceHTMLEntityNumbers) {
     body_replace = CUVStringCreateFromHTMLEntityNumberString(json);
-    CFRelease(json);
+    //CFRelease(json);
   }
   else {
     body_replace = json;

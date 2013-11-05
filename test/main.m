@@ -6,7 +6,7 @@
 //
 //
 
-#include "coreuv.h"
+#include "../coreuv.h"
 #include <curl/curl.h>
 #include <tidy/tidy.h>
 #include <tidy/buffio.h>
@@ -115,7 +115,7 @@ void dump_node(TidyDoc doc, TidyNode tnod, int indent, CFMutableArrayRef *all_sh
                 
                 CFArrayAppendValue(*all_shows, show);
                 CFRelease(show);
-                show = nil;
+                show = NULL;
               }
               
               if (strncmp("Price", (const char *) buf.bp, 5) == 0) {
@@ -150,9 +150,9 @@ CFDictionaryRef CreateHeaders(http_request_t const * const request, CFIndex cont
 
   CFStringRef contentLengthValue = CFStringCreateWithFormat(NULL, NULL, CFSTR("%ld"), contentLength);
   
-  CFDictionarySetValue(dict, CFSTR("Content-Type"), CFSTR("application/json; charset=UTF-8"));
+  /*CFDictionarySetValue(dict, CFSTR("Content-Type"), CFSTR("application/json; charset=UTF-8"));*/
   /*CFDictionarySetValue(dict, CFSTR("Content-Type"), CFSTR("text/html; charset=UTF-8"));*/
-  /*CFDictionarySetValue(dict, CFSTR("Content-Type"), CFSTR("text/xml; charset=UTF-8"));*/
+  CFDictionarySetValue(dict, CFSTR("Content-Type"), CFSTR("text/xml; charset=UTF-8"));
   CFDictionarySetValue(dict, CFSTR("Content-Length"), contentLengthValue);
   CFDictionarySetValue(dict, CFSTR("Transfer-Encoding"), CFSTR("Identity"));
   CFDictionarySetValue(dict, CFSTR("X-Frame-Options"), CFSTR("SAMEORIGIN"));
@@ -196,7 +196,7 @@ CFDictionaryRef CreateBody(http_request_t const * const request, CUVHTTPResponse
     
     if (CURLE_OK != res) {
       //error
-      NSLog(@"Error");
+      //NSLog(@"Error");
     }
     else {
       err = tidyParseBuffer(tdoc, &docbuf);
@@ -205,7 +205,7 @@ CFDictionaryRef CreateBody(http_request_t const * const request, CUVHTTPResponse
         if (err >= 0) {
           err = tidyRunDiagnostics(tdoc);
           if (err >= 0) {
-            dump_node(tdoc, tidyGetRoot(tdoc), 0, &all_shows, nil);
+            dump_node(tdoc, tidyGetRoot(tdoc), 0, &all_shows, NULL);
             tidyBufFree(&docbuf);
             tidyBufFree(&tidy_errbuf);
             tidyRelease(tdoc);
@@ -230,9 +230,9 @@ CFDictionaryRef CreateBody(http_request_t const * const request, CUVHTTPResponse
 
 void BeginResponse(CUVResponseTransform * const transform, CUVResponseReplacements * const replace) {
   *replace = kCUVResponseReplaceHTMLEntityNames;
-  *transform = kCUVResponseTransformJSON;
+  /**transform = kCUVResponseTransformJSON;*/
   /**transform = kCUVResponseTransformHTML;*/
-  /**transform = kCUVResponseTransformXML;*/
+  *transform = kCUVResponseTransformXML;
   
   curl_global_init(CURL_GLOBAL_DEFAULT);
 }

@@ -29,6 +29,9 @@
 
 #pragma Helper stack for parsing
 
+typedef uint64_t boolean_t;
+typedef _Bool bool;
+
 // Internal stack to hold containers when parsing. Practically all functions in most
 // cases are O(1), unless internal buffers are full and need to be reallocated.
 //
