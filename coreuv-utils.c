@@ -19,7 +19,9 @@
 CFDictionarySetValue(entity_names, CFSTR(QUOTE(&ENTITY_NAME;)), CFSTR(#VALUE)); \
 CFDictionarySetValue(entity_numbers, CFSTR(QUOTE(&HASHIFY()ENTITY_NUMBER;)), CFSTR(#VALUE));
 
+#ifndef __MACTYPES__
 typedef _Bool boolean_t;
+#endif
 
 typedef struct {
   CFStringRef entity_name;

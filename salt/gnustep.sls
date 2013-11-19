@@ -82,7 +82,7 @@ download-gnustep-base:
 
 download-gnustep-corebase:
   cmd.run:
-    - name: curl -o gnustep-corebase.tar.gz ftp://ftp.gnustep.org/pub/gnustep/libs/gnustep-corebase-0.1.tar.gz
+    - name: curl -o gnustep-corebase.tar.gz ftp://ftp.gnustep.org/pub/gnustep/libs/gnustep-corebase-0.1.1.tar.gz
     - cwd: /tmp/
     - require:
       - pkg: curl
@@ -167,7 +167,7 @@ install-gnustep-base:
 install-gnustep-corebase:
   cmd.run:
     - name: export CC=clang && ./configure && make install
-    - cwd: /tmp/gnustep-corebase-0.1/
+    - cwd: /tmp/gnustep-corebase-0.1.1/
     - require:
       - cmd.run: install-gnustep-base
 

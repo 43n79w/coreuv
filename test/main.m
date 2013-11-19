@@ -148,11 +148,14 @@ void dump_node(TidyDoc doc, TidyNode tnod, int indent, CFMutableArrayRef *all_sh
 CFDictionaryRef CreateHeaders(http_request_t const * const request, CFIndex contentLength) {
   CFMutableDictionaryRef dict = CFDictionaryCreateMutable(NULL, 30, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 
-  CFStringRef contentLengthValue = CFStringCreateWithFormat(NULL, NULL, CFSTR("%ld"), contentLength);
+  //CFStringRef contentLengthValue = CFStringCreateWithFormat(NULL, NULL, CFSTR("%ld"), contentLength);
+  char content_buf[50];
+  sprintf(content_buf, "%ld", contentLength);
+  CFStringRef contentLengthValue = CFStringCreateWithCString(NULL, content_buf, kCFStringEncodingASCII);
   
   /*CFDictionarySetValue(dict, CFSTR("Content-Type"), CFSTR("application/json; charset=UTF-8"));*/
-  /*CFDictionarySetValue(dict, CFSTR("Content-Type"), CFSTR("text/html; charset=UTF-8"));*/
-  CFDictionarySetValue(dict, CFSTR("Content-Type"), CFSTR("text/xml; charset=UTF-8"));
+  CFDictionarySetValue(dict, CFSTR("Content-Type"), CFSTR("text/html; charset=UTF-8"));
+  /*CFDictionarySetValue(dict, CFSTR("Content-Type"), CFSTR("text/xml; charset=UTF-8"));*/
   CFDictionarySetValue(dict, CFSTR("Content-Length"), contentLengthValue);
   CFDictionarySetValue(dict, CFSTR("Transfer-Encoding"), CFSTR("Identity"));
   CFDictionarySetValue(dict, CFSTR("X-Frame-Options"), CFSTR("SAMEORIGIN"));
@@ -168,6 +171,9 @@ CFDictionaryRef CreateBody(http_request_t const * const request, CUVHTTPResponse
   CFDictionarySetValue(dict, CFSTR("Foo"), CFSTR("Bar"));
   *status = kCUVHTTP200;
   return dict;*/
+
+  *status = kCUVHTTP200;
+  
   CURL *curl;
   CURLcode res;
   
@@ -231,8 +237,8 @@ CFDictionaryRef CreateBody(http_request_t const * const request, CUVHTTPResponse
 void BeginResponse(CUVResponseTransform * const transform, CUVResponseReplacements * const replace) {
   *replace = kCUVResponseReplaceHTMLEntityNames;
   /**transform = kCUVResponseTransformJSON;*/
-  /**transform = kCUVResponseTransformHTML;*/
-  *transform = kCUVResponseTransformXML;
+  *transform = kCUVResponseTransformHTML;
+  /**transform = kCUVResponseTransformXML;*/
   
   curl_global_init(CURL_GLOBAL_DEFAULT);
 }

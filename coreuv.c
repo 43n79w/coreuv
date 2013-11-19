@@ -163,47 +163,96 @@ void __handle_request_dispatch_html(void *context) {
   client_t *c = (client_t *) context;
   
   CFMutableStringRef response_buffer;
+  CFIndex num_chars_response_buffer;
+  CFIndex num_bytes_response_buffer;
+  
   CFMutableStringRef headers_buffer;
+  CFIndex num_chars_headers_buffer;
+  CFIndex num_bytes_headers_buffer;
+  
+  CFStringRef body_replace;
+  CFDictionaryRef body;
+  CFStringRef xml;
+  
+  CFIndex num_chars_converted;
+  CFIndex max_bytes_buf_converted = 100;
+  UInt8 buf_converted[max_bytes_buf_converted];
+  CFIndex num_bytes_buf_converted;
+  CFIndex total_num_bytes_converted;
+  
+  CFRange range_to_convert;
+  
+  CFDictionaryRef headers;
+  CFIndex num_headers;
+  CFTypeRef *keys;
+  CFTypeRef *values;
+  CFTypeRef *key;
+  CFTypeRef *value;
+  
+  CFStringRef statusString;
   
   /**
    * We generate the body before the headers so we can set the Content-Length header (though this isn't mandatory).
    * Actually setting the Content-Length is left to the PJAPIResponseDataSource functionality to accomplish.
    */
-  CFDictionaryRef body = (*body_ptr)(&c->request, &c->response.status);
-  response_buffer = CFStringCreateMutable(NULL, 1000);
-  
-  /*CFErrorRef error = NULL;*/
+  body = (*body_ptr)(&c->request, &c->response.status);
+  response_buffer = CFStringCreateMutable(NULL, 0);
+
   CFStringRef html = CUVStringCreateHTMLFromDictionary(body);
   
-  CFStringAppend(response_buffer, html);
-  
-  CFRelease(html);
-  
-  CFIndex len_chars = CFStringGetLength(response_buffer);
-  CFIndex len_bytes_body;
-  CFIndex num_converted_chars;
-  num_converted_chars = CFStringGetBytes(response_buffer, CFRangeMake(0, len_chars), kCFStringEncodingUTF8, '?', FALSE, NULL, 0, &len_bytes_body);
-  
-  if (num_converted_chars == 0) {
-    // converted nothing
+  if ((c->response.replacements & kCUVResponseReplaceHTMLEntityNames) == kCUVResponseReplaceHTMLEntityNames) {
+    body_replace = CUVStringCreateFromHTMLEntityNameString(html);
+    CFRelease(html);
+  }
+  else if ((c->response.replacements & kCUVResponseReplaceHTMLEntityNumbers) == kCUVResponseReplaceHTMLEntityNumbers) {
+    body_replace = CUVStringCreateFromHTMLEntityNumberString(html);
+    CFRelease(html);
+  }
+  else {
+    body_replace = html;
   }
   
-  CFDictionaryRef headers = (*headers_ptr)(&c->request, len_bytes_body);
+  if (body_replace) {
+    CFStringAppend(response_buffer, body_replace);
+    CFRelease(body_replace);
+  }
   
-  CFIndex idx = CFDictionaryGetCount(headers);
-  CFTypeRef *keys = (CFTypeRef *) malloc(sizeof(CFTypeRef) * idx);
-  CFTypeRef *values = (CFTypeRef *) malloc(sizeof(CFTypeRef) * idx);
+  num_chars_response_buffer = CFStringGetLength(response_buffer);
+  
+  total_num_bytes_converted = 0;
+  
+  range_to_convert = CFRangeMake(0, num_chars_response_buffer);
+  
+  while (range_to_convert.length > 0) {
+    
+    num_chars_converted = CFStringGetBytes(response_buffer, range_to_convert, kCFStringEncodingUTF8, '?', false, buf_converted, max_bytes_buf_converted, &num_bytes_buf_converted);
+    total_num_bytes_converted += num_bytes_buf_converted;
+    
+    if (num_chars_converted == 0) break;
+    
+    range_to_convert.location += num_chars_converted;
+    range_to_convert.length -= num_chars_converted;
+  };
+  
+  num_bytes_response_buffer = total_num_bytes_converted;
+  
+  headers = (*headers_ptr)(&c->request, num_bytes_response_buffer);
+  
+  num_headers = CFDictionaryGetCount(headers);
+  keys = (CFTypeRef *) malloc(sizeof(CFTypeRef) * num_headers);
+  values = (CFTypeRef *) malloc(sizeof(CFTypeRef) * num_headers);
   
   CFDictionaryGetKeysAndValues(headers, (const void **) keys, (const void **) values);
-  headers_buffer = CFStringCreateMutable(NULL, 1000);
   
-  CFStringRef statusString = CFStringCreateWithFormat(NULL, NULL, CFSTR("HTTP/1.1 %llu \r\n"), c->response.status);
+  headers_buffer = CFStringCreateMutable(NULL, 0);
+  
+  statusString = CFStringCreateWithFormat(NULL, NULL, CFSTR("HTTP/1.1 %llu \r\n"), c->response.status);
   CFStringAppend(headers_buffer, statusString);
   CFRelease(statusString);
   
-  for (int i = 0; i < idx; i++) {
-    CFTypeRef *key = (CFTypeRef *) keys[i];
-    CFTypeRef *value = (CFTypeRef *) values[i];
+  for (int i = 0; i < num_headers; i++) {
+    key = (CFTypeRef *) keys[i];
+    value = (CFTypeRef *) values[i];
     CFStringAppend(headers_buffer, (CFStringRef) key);
     CFStringAppend(headers_buffer, CFSTR(": "));
     CFStringAppend(headers_buffer, (CFStringRef) value);
@@ -216,19 +265,32 @@ void __handle_request_dispatch_html(void *context) {
   CFStringAppend(headers_buffer, CFSTR("\r\n"));
   CFStringAppend(headers_buffer, response_buffer);
   
-  CFIndex len_bytes_header;
-  len_chars = CFStringGetLength(headers_buffer);
-  num_converted_chars = CFStringGetBytes(headers_buffer, CFRangeMake(0, len_chars), kCFStringEncodingUTF8, '?', FALSE, NULL, 0, &len_bytes_header);
+  num_chars_headers_buffer = CFStringGetLength(headers_buffer);
   
-  c->response_buffer = uv_buf_init((char *) malloc(len_bytes_header + 1), (uint32_t) len_bytes_header + 1);
-  num_converted_chars = CFStringGetBytes(headers_buffer, CFRangeMake(0, len_chars), kCFStringEncodingUTF8, '?', FALSE, (UInt8 *) c->response_buffer.base, len_bytes_header, &len_bytes_header);
+  total_num_bytes_converted = 0;
+  range_to_convert = CFRangeMake(0, num_chars_headers_buffer);
   
-  if (num_converted_chars == 0) {
-    // converted nothing
-  }
+  while (range_to_convert.length > 0) {
+    
+    num_chars_converted = CFStringGetBytes(headers_buffer, range_to_convert, kCFStringEncodingUTF8, '?', false, buf_converted, max_bytes_buf_converted, &num_bytes_buf_converted);
+    
+    total_num_bytes_converted += num_bytes_buf_converted;
+    
+    if (num_chars_converted == 0) break;
+    
+    range_to_convert.location += num_chars_converted;
+    range_to_convert.length -= num_chars_converted;
+  };
+  
+  num_bytes_headers_buffer = total_num_bytes_converted;
+  
+  c->response_buffer = uv_buf_init((char *) malloc(sizeof(UInt8) * (num_bytes_headers_buffer + num_bytes_response_buffer)), num_bytes_headers_buffer + num_bytes_response_buffer);
+  
+  num_chars_converted = CFStringGetBytes(headers_buffer, CFRangeMake(0, CFStringGetLength(headers_buffer)), kCFStringEncodingUTF8, '?', false, (UInt8 *) c->response_buffer.base, num_bytes_headers_buffer, NULL);
+  num_chars_converted = CFStringGetBytes(response_buffer, CFRangeMake(0, CFStringGetLength(response_buffer)), kCFStringEncodingUTF8, '?', false, (UInt8 *) &c->response_buffer.base[num_bytes_headers_buffer], num_bytes_response_buffer, NULL);
   
   dispatch_async_f(response_queue, c, handle_async_response);
- 
+  
   CFRelease(headers_buffer);
   CFRelease(response_buffer);
   CFRelease(headers);
@@ -237,20 +299,45 @@ void __handle_request_dispatch_html(void *context) {
 
 void __handle_request_dispatch_xml(void *context) {
   client_t *c = (client_t *) context;
-  
+
   CFMutableStringRef response_buffer;
+  CFIndex num_chars_response_buffer;
+  CFIndex num_bytes_response_buffer;
+
   CFMutableStringRef headers_buffer;
+  CFIndex num_chars_headers_buffer;
+  CFIndex num_bytes_headers_buffer;
+
+  CFStringRef body_replace;
+  CFDictionaryRef body;
+  CFStringRef xml;
+  
+  CFIndex num_chars_converted;
+  CFIndex max_bytes_buf_converted = 100;
+  UInt8 buf_converted[max_bytes_buf_converted];
+  CFIndex num_bytes_buf_converted;
+  CFIndex total_num_bytes_converted;
+
+  CFRange range_to_convert;
+
+  CFDictionaryRef headers;
+  CFIndex num_headers;
+  CFTypeRef *keys;
+  CFTypeRef *values;
+  CFTypeRef *key;
+  CFTypeRef *value;
+  
+  CFStringRef statusString;
   
   /**
    * We generate the body before the headers so we can set the Content-Length header (though this isn't mandatory).
    * Actually setting the Content-Length is left to the PJAPIResponseDataSource functionality to accomplish.
    */
-  CFDictionaryRef body = (*body_ptr)(&c->request, &c->response.status);
-  response_buffer = CFStringCreateMutable(NULL, 1000);
+  body = (*body_ptr)(&c->request, &c->response.status);
+  response_buffer = CFStringCreateMutable(NULL, 0);
   
   /*CFErrorRef error = NULL;*/
-  CFStringRef xml = CUVStringCreateXMLFromDictionary(body);
-  CFStringRef body_replace;
+  xml = CUVStringCreateXMLFromDictionary(body);
   
   if ((c->response.replacements & kCUVResponseReplaceHTMLEntityNames) == kCUVResponseReplaceHTMLEntityNames) {
     body_replace = CUVStringCreateFromHTMLEntityNameString(xml);
@@ -265,37 +352,48 @@ void __handle_request_dispatch_xml(void *context) {
   }
   
   if (body_replace) {
-    CFStringAppend(response_buffer, CFSTR("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"));
+    CFStringAppendCString(response_buffer, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n", kCFStringEncodingUTF8);
     CFStringAppend(response_buffer, body_replace);
     CFStringFindAndReplace(response_buffer, CFSTR("&"), CFSTR("&amp;"), CFRangeMake(0, CFStringGetLength(response_buffer)), 0);
     CFRelease(body_replace);
   }
   
-  CFIndex len_chars = CFStringGetLength(response_buffer);
-  CFIndex len_bytes_body;
-  CFIndex num_converted_chars;
-  num_converted_chars = CFStringGetBytes(response_buffer, CFRangeMake(0, len_chars), kCFStringEncodingUTF8, '?', FALSE, NULL, 0, &len_bytes_body);
+  num_chars_response_buffer = CFStringGetLength(response_buffer);
+
+  total_num_bytes_converted = 0;
   
-  if (num_converted_chars == 0) {
-    // converted nothing
-  }
+  range_to_convert = CFRangeMake(0, num_chars_response_buffer);
+
+  while (range_to_convert.length > 0) {
+
+    num_chars_converted = CFStringGetBytes(response_buffer, range_to_convert, kCFStringEncodingUTF8, '?', false, buf_converted, max_bytes_buf_converted, &num_bytes_buf_converted);
+    total_num_bytes_converted += num_bytes_buf_converted;
+   
+    if (num_chars_converted == 0) break;
+
+    range_to_convert.location += num_chars_converted;
+    range_to_convert.length -= num_chars_converted;
+  };
+
+  num_bytes_response_buffer = total_num_bytes_converted;
+
+  headers = (*headers_ptr)(&c->request, num_bytes_response_buffer);
   
-  CFDictionaryRef headers = (*headers_ptr)(&c->request, len_bytes_body);
-  
-  CFIndex idx = CFDictionaryGetCount(headers);
-  CFTypeRef *keys = (CFTypeRef *) malloc(sizeof(CFTypeRef) * idx);
-  CFTypeRef *values = (CFTypeRef *) malloc(sizeof(CFTypeRef) * idx);
+  num_headers = CFDictionaryGetCount(headers);
+  keys = (CFTypeRef *) malloc(sizeof(CFTypeRef) * num_headers);
+  values = (CFTypeRef *) malloc(sizeof(CFTypeRef) * num_headers);
   
   CFDictionaryGetKeysAndValues(headers, (const void **) keys, (const void **) values);
-  headers_buffer = CFStringCreateMutable(NULL, 1000);
+
+  headers_buffer = CFStringCreateMutable(NULL, 0);
   
-  CFStringRef statusString = CFStringCreateWithFormat(NULL, NULL, CFSTR("HTTP/1.1 %llu \r\n"), c->response.status);
+  statusString = CFStringCreateWithFormat(NULL, NULL, CFSTR("HTTP/1.1 %llu \r\n"), c->response.status);
   CFStringAppend(headers_buffer, statusString);
   CFRelease(statusString);
   
-  for (int i = 0; i < idx; i++) {
-    CFTypeRef *key = (CFTypeRef *) keys[i];
-    CFTypeRef *value = (CFTypeRef *) values[i];
+  for (int i = 0; i < num_headers; i++) {
+    key = (CFTypeRef *) keys[i];
+    value = (CFTypeRef *) values[i];
     CFStringAppend(headers_buffer, (CFStringRef) key);
     CFStringAppend(headers_buffer, CFSTR(": "));
     CFStringAppend(headers_buffer, (CFStringRef) value);
@@ -308,17 +406,30 @@ void __handle_request_dispatch_xml(void *context) {
   CFStringAppend(headers_buffer, CFSTR("\r\n"));
   CFStringAppend(headers_buffer, response_buffer);
   
-  CFIndex len_bytes_header;
-  len_chars = CFStringGetLength(headers_buffer);
-  num_converted_chars = CFStringGetBytes(headers_buffer, CFRangeMake(0, len_chars), kCFStringEncodingUTF8, '?', FALSE, NULL, 0, &len_bytes_header);
+  num_chars_headers_buffer = CFStringGetLength(headers_buffer);
+
+  total_num_bytes_converted = 0;
+  range_to_convert = CFRangeMake(0, num_chars_headers_buffer);
+
+  while (range_to_convert.length > 0) {
+
+    num_chars_converted = CFStringGetBytes(headers_buffer, range_to_convert, kCFStringEncodingUTF8, '?', false, buf_converted, max_bytes_buf_converted, &num_bytes_buf_converted);
+
+    total_num_bytes_converted += num_bytes_buf_converted;
+   
+    if (num_chars_converted == 0) break;
+
+    range_to_convert.location += num_chars_converted;
+    range_to_convert.length -= num_chars_converted;
+  };
   
-  c->response_buffer = uv_buf_init((char *) malloc(len_bytes_header + 1), (uint32_t) len_bytes_header + 1);
-  num_converted_chars = CFStringGetBytes(headers_buffer, CFRangeMake(0, len_chars), kCFStringEncodingUTF8, '?', FALSE, (UInt8 *) c->response_buffer.base, len_bytes_header, &len_bytes_header);
-  
-  if (num_converted_chars == 0) {
-    // converted nothing
-  }
-  
+  num_bytes_headers_buffer = total_num_bytes_converted;
+
+  c->response_buffer = uv_buf_init((char *) malloc(sizeof(UInt8) * (num_bytes_headers_buffer + num_bytes_response_buffer)), num_bytes_headers_buffer + num_bytes_response_buffer);
+
+  num_chars_converted = CFStringGetBytes(headers_buffer, CFRangeMake(0, CFStringGetLength(headers_buffer)), kCFStringEncodingUTF8, '?', false, (UInt8 *) c->response_buffer.base, num_bytes_headers_buffer, NULL);
+  num_chars_converted = CFStringGetBytes(response_buffer, CFRangeMake(0, CFStringGetLength(response_buffer)), kCFStringEncodingUTF8, '?', false, (UInt8 *) &c->response_buffer.base[num_bytes_headers_buffer], num_bytes_response_buffer, NULL);
+
   dispatch_async_f(response_queue, c, handle_async_response);
  
   CFRelease(headers_buffer);

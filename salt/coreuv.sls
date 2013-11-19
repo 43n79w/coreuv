@@ -34,3 +34,9 @@ install-libuv:
     - require:
       - cmd.run: extract-libuv
 
+post-install-libuv:
+  cmd.run:
+    - name: install -m 644 /tmp/libuv-v0.10.18/out/Debug/libuv.a /usr/local/lib; install -m 644 /tmp/libuv-v0.10.18/include/uv.h /usr/local/include; install -m 755 -d /usr/local/include/uv-private; install -m 644 /tmp/libuv-v0.10.18/include/uv-private/stdint-msvc2008.h /usr/local/include/uv-private; install -m 644 /tmp/libuv-v0.10.18/include/uv-private/tree.h /usr/local/include/uv-private; install -m 644 /tmp/libuv-v0.10.18/include/uv-private/uv-bsd.h /usr/local/include/uv-private; install -m 644 /tmp/libuv-v0.10.18/include/uv-private/uv-darwin.h /usr/local/include/uv-private; install -m 644 /tmp/libuv-v0.10.18/include/uv-private/uv-linux.h /usr/local/include/uv-private; install -m 644 /tmp/libuv-v0.10.18/include/uv-private/uv-sunos.h /usr/local/include/uv-private; install -m 644 /tmp/libuv-v0.10.18/include/uv-private/uv-unix.h /usr/local/include/uv-private; install -m 644 /tmp/libuv-v0.10.18/include/uv-private/uv-win.h /usr/local/include/uv-private; install -m 644 /tmp/libuv-v0.10.18/include/uv-private/ngx-queue.h /usr/local/include/uv-private
+    - cwd: /tmp/libuv-v0.10.18/
+    - require:
+      - cmd.run: install-libuv
